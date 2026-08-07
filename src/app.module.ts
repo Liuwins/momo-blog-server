@@ -8,6 +8,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { LikesModule } from './modules/likes/likes.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { OgModule } from './modules/og/og.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { UploadModule } from './modules/upload/upload.module';
     LikesModule,
     NotificationsModule,
     UploadModule,
+    OgModule,
   ],
 })
 export class AppModule {}
