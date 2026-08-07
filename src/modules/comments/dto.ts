@@ -1,10 +1,12 @@
-import { IsInt, IsString, MaxLength, IsOptional } from 'class-validator';
+import { IsInt, IsString, MaxLength, IsOptional, IsNotEmpty, MinLength } from 'class-validator';
 
 export class CreateCommentDto {
   @IsInt()
   postId: number;
 
+  @IsNotEmpty({ message: '评论内容不能为空' })
   @IsString()
+  @MinLength(1)
   @MaxLength(500)
   content: string;
 

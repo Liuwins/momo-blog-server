@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt.guard';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto, QueryPostsDto } from './dto';
@@ -18,8 +18,10 @@ export class PostsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number, @Request() req) {
-    return this.postsService.findById(id, req.user?.id);
+  async findOne(@Param('id') id: number, @Request() req) {
+    const post = await this.postsService.findById(id, req.user?.id);
+    if (!post) throw new NotFoundException('文章不存在');
+    return post;
   }
 
   @Post()
@@ -30,13 +32,17 @@ export class PostsController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Param('id') id: number, @Request() req, @Body() dto: UpdatePostDto) {
-    return this.postsService.update(id, req.user.id, dto);
+  async update(@Param('id') id: number, @Request() req, @Body() dto: UpdatePostDto) {
+    const result = await this.postsService.update(id, req.user.id, dto);
+    if (!result) throw new NotFoundException('文章不存在或无权操作');
+    return result;
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  delete(@Param('id') id: number, @Request() req) {
-    return this.postsService.delete(id, req.user.id);
+  async delete(@Param('id') id: number, @Request() req) {
+    const result = await this.postsService.delete(id, req.user.id);
+    if (!result) throw new NotFoundException('文章不存在或无权操作');
+    return { success: true };
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { NotificationType } from "../../entities/notification.entity";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,6 +17,11 @@ export class CommentsService {
   ) {}
 
   async create(postId: number, userId: number, dto: CreateCommentDto) {
+    // 确认文章存在
+    const post = await this.postsService.findById(postId);
+    if (!post) {
+      throw new HttpException('文章不存在', HttpStatus.NOT_FOUND);
+    }
     const comment = this.commentsRepo.create({
       postId,
       userId,
@@ -32,8 +37,7 @@ export class CommentsService {
       relations: ['user'],
     });
 
-    const post = await this.postsService.findById(postId);
-    if (post && post.userId !== userId) {
+    if (post.userId !== userId) {
       await this.notificationsService.create({
         receiverId: post.userId,
         senderId: userId,

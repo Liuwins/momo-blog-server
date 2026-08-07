@@ -22,12 +22,16 @@ export class Notification {
   @Column()
   receiverId: number;
 
-  @ManyToOne(() => User, (user) => user.notifications)
+  @ManyToOne(() => User, (user) => user.notifications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'receiverId' })
   receiver: User;
 
   @Column()
   senderId: number;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'senderId' })
+  sender: User;
 
   @Column({ type: 'varchar', default: 'like' })
   type: NotificationType;

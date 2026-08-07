@@ -1,4 +1,17 @@
-import { IsOptional, IsString, MaxLength, IsArray } from 'class-validator';
+import { IsOptional, IsString, MaxLength, IsArray, ArrayMaxSize, ArrayUnique, ValidateIf, ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments, Validate } from 'class-validator';
+
+@ValidatorConstraint({ name: 'NotEmptyPost', async: false })
+export class NotEmptyPostConstraint implements ValidatorConstraintInterface {
+  validate(_value: any, args: ValidationArguments) {
+    const obj = args.object as CreatePostDto;
+    const content = (obj.content || '').trim();
+    const images = obj.images || [];
+    return content.length > 0 || images.length > 0;
+  }
+  defaultMessage() {
+    return '文章内容或图片至少填写一个';
+  }
+}
 
 export class CreatePostDto {
   @IsOptional()
@@ -12,7 +25,12 @@ export class CreatePostDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(5, { message: '标签最多 5 个' })
+  @ArrayUnique({ message: '标签不能重复' })
   tags?: string[];
+
+  @Validate(NotEmptyPostConstraint)
+  notEmpty: boolean = true;
 }
 
 export class UpdatePostDto {
@@ -27,6 +45,8 @@ export class UpdatePostDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(5, { message: '标签最多 5 个' })
+  @ArrayUnique({ message: '标签不能重复' })
   tags?: string[];
 }
 
