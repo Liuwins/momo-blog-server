@@ -18,7 +18,7 @@ export class PostsService {
   ) {}
 
   async findAll(query: QueryPostsDto, currentUserId?: number) {
-    const { page = 1, pageSize = 10, keyword, sortBy = 'latest' } = query;
+    const { page = 1, pageSize = 10, keyword, sortBy = 'latest', tag } = query;
     const qb = this.postsRepo
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.user', 'user')
@@ -26,7 +26,12 @@ export class PostsService {
       .take(pageSize);
 
     if (keyword) {
-      qb.where('post.content LIKE :keyword', { keyword: `%${keyword}%` });
+      qb.andWhere('post.content LIKE :keyword', { keyword: `%${keyword}%` });
+    }
+
+    if (tag) {
+      // simple-array 存储为逗号分隔，用 LIKE 模糊匹配
+      qb.andWhere('post.tags LIKE :tag', { tag: `%${tag}%` });
     }
 
     if (sortBy === 'hot') {
@@ -46,6 +51,7 @@ export class PostsService {
           : null,
         content: post.content,
         images: post.images,
+        tags: post.tags || [],
         createdAt: post.createdAt,
         likeCount: post.likeCount,
         commentCount: post.commentCount,
@@ -75,6 +81,7 @@ export class PostsService {
         : null,
       content: post.content,
       images: post.images,
+      tags: post.tags || [],
       createdAt: post.createdAt,
       likeCount: post.likeCount,
       commentCount: post.commentCount,
@@ -91,6 +98,7 @@ export class PostsService {
       userId,
       content: dto.content,
       images: dto.images || [],
+      tags: dto.tags || [],
     });
     const saved = await this.postsRepo.save(post);
     return this.findById(saved.id, userId);
@@ -101,8 +109,23 @@ export class PostsService {
     if (!post || post.userId !== userId) return null;
     if (dto.content !== undefined) post.content = dto.content;
     if (dto.images !== undefined) post.images = dto.images;
+    if (dto.tags !== undefined) post.tags = dto.tags;
     await this.postsRepo.save(post);
     return this.findById(id, userId);
+  }
+
+  async getAllTags() {
+    const posts = await this.postsRepo.find({ select: ['tags'] });
+    const tagCount = new Map<string, number>();
+    for (const p of posts) {
+      for (const t of (p.tags || [])) {
+        const tag = t.trim();
+        if (tag) tagCount.set(tag, (tagCount.get(tag) || 0) + 1);
+      }
+    }
+    return Array.from(tagCount.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
   }
 
   async delete(id: number, userId: number) {

@@ -12,6 +12,11 @@ export class PostsController {
     return this.postsService.findAll(query, req.user?.id);
   }
 
+  @Get('tags')
+  getTags() {
+    return this.postsService.getAllTags();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: number, @Request() req) {
     return this.postsService.findById(id, req.user?.id);

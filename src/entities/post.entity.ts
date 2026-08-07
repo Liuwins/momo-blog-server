@@ -30,6 +30,9 @@ export class Post {
   @Column({ type: 'simple-array', default: '' })
   images: string[];
 
+  @Column({ type: 'simple-array', default: '' })
+  tags: string[];
+
   @Column({ default: 0 })
   likeCount: number;
 

@@ -9,6 +9,10 @@ export class CreatePostDto {
   @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsArray()
+  tags?: string[];
 }
 
 export class UpdatePostDto {
@@ -20,6 +24,10 @@ export class UpdatePostDto {
   @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsArray()
+  tags?: string[];
 }
 
 export class QueryPostsDto {
@@ -36,4 +44,8 @@ export class QueryPostsDto {
   @IsOptional()
   @IsString()
   sortBy?: 'latest' | 'hot';
+
+  @IsOptional()
+  @IsString()
+  tag?: string;
 }
