@@ -6,8 +6,14 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { User } from './user.entity';
 import { Post } from './post.entity';
+import { User } from './user.entity';
+
+export enum CommentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
 
 @Entity('comments')
 export class Comment {
@@ -21,20 +27,30 @@ export class Comment {
   @JoinColumn({ name: 'postId' })
   post: Post;
 
-  @Column()
+  @Column({ nullable: true })
   userId: number;
 
-  @ManyToOne(() => User, (user) => user.comments)
+  @ManyToOne(() => User, (user) => user.comments, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'text' })
+  // 游客评论
+  @Column({ type: 'varchar', default: '' })
+  nickname: string;
+
+  @Column({ type: 'varchar', default: '' })
+  visitorId: string;
+
+  @Column({ type: 'text', default: '' })
   content: string;
+
+  @Column({ type: 'varchar', default: CommentStatus.PENDING })
+  status: CommentStatus;
 
   @Column({ nullable: true })
   replyToId: number;
 
-  @Column({ default: '' })
+  @Column({ type: 'varchar', default: '' })
   replyToNickname: string;
 
   @CreateDateColumn()

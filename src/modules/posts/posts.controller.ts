@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseGuards, NotFoundException } from '@nestjs/common';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/jwt.guard';
 import { PostsService } from './posts.service';
 import { CreatePostDto, UpdatePostDto, QueryPostsDto } from './dto';
 
@@ -8,6 +8,7 @@ export class PostsController {
   constructor(private postsService: PostsService) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   findAll(@Query() query: QueryPostsDto, @Request() req) {
     return this.postsService.findAll(query, req.user?.id);
   }
@@ -18,6 +19,7 @@ export class PostsController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   async findOne(@Param('id') id: number, @Request() req) {
     const post = await this.postsService.findById(id, req.user?.id);
     if (!post) throw new NotFoundException('文章不存在');

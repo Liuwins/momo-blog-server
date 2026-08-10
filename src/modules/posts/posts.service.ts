@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '../../entities/post.entity';
@@ -30,7 +30,6 @@ export class PostsService {
     }
 
     if (tag) {
-      // simple-array 存储为逗号分隔，用 LIKE 模糊匹配
       qb.andWhere('post.tags LIKE :tag', { tag: `%${tag}%` });
     }
 
@@ -58,7 +57,7 @@ export class PostsService {
         liked: currentUserId
           ? await this.likesRepo.exist({ where: { userId: currentUserId, postId: post.id } })
           : false,
-        comments: await this.getPreviewComments(post.id),
+        comments: await this.getPreviewComments(post.id, currentUserId),
         likeUsers: await this.getLikeUsers(post.id),
       })),
     );
@@ -88,7 +87,7 @@ export class PostsService {
       liked: currentUserId
         ? await this.likesRepo.exist({ where: { userId: currentUserId, postId: post.id } })
         : false,
-      comments: await this.getFullComments(post.id),
+      comments: await this.getFullComments(post.id, currentUserId),
       likeUsers: await this.getLikeUsers(post.id),
     };
   }
@@ -114,6 +113,13 @@ export class PostsService {
     return this.findById(id, userId);
   }
 
+  async delete(id: number, userId: number) {
+    const post = await this.postsRepo.findOne({ where: { id } });
+    if (!post || post.userId !== userId) return false;
+    await this.postsRepo.remove(post);
+    return true;
+  }
+
   async getAllTags() {
     const posts = await this.postsRepo.find({ select: ['tags'] });
     const tagCount = new Map<string, number>();
@@ -128,13 +134,6 @@ export class PostsService {
       .sort((a, b) => b.count - a.count);
   }
 
-  async delete(id: number, userId: number) {
-    const post = await this.postsRepo.findOne({ where: { id } });
-    if (!post || post.userId !== userId) return false;
-    await this.postsRepo.remove(post);
-    return true;
-  }
-
   async incrementCommentCount(id: number) {
     await this.postsRepo.increment({ id }, 'commentCount', 1);
   }
@@ -143,21 +142,41 @@ export class PostsService {
     await this.postsRepo.decrement({ id }, 'commentCount', 1);
   }
 
-  private async getPreviewComments(postId: number) {
-    return this.commentsRepo.find({
+  private async getPreviewComments(postId: number, currentUserId?: number) {
+    const comments = await this.commentsRepo.find({
       where: { postId },
       relations: ['user'],
       take: 3,
       order: { createdAt: 'ASC' },
     });
+    return this.filterCommentsForUser(comments, currentUserId);
   }
 
-  private async getFullComments(postId: number) {
-    return this.commentsRepo.find({
+  private async getFullComments(postId: number, currentUserId?: number) {
+    const comments = await this.commentsRepo.find({
       where: { postId },
       relations: ['user'],
       order: { createdAt: 'ASC' },
     });
+    return this.filterCommentsForUser(comments, currentUserId);
+  }
+
+  private filterCommentsForUser(comments: any[], currentUserId?: number) {
+    return comments
+      .filter((c) => {
+        if (c.status === 'approved') return true;
+        if (currentUserId) return true;
+        return false;
+      })
+      .map((c) => ({
+        id: c.id,
+        nickname: c.nickname || c.user?.nickname || '匿名',
+        avatar: c.user?.avatar || '',
+        content: c.content,
+        createdAt: c.createdAt,
+        status: c.status,
+        replyTo: c.replyToId ? { id: c.replyToId, nickname: c.replyToNickname } : null,
+      }));
   }
 
   private async getLikeUsers(postId: number) {
@@ -166,6 +185,8 @@ export class PostsService {
       relations: ['user'],
       take: 8,
     });
-    return likes.map((l) => ({ id: l.user.id, nickname: l.user.nickname }));
+    return likes
+      .filter((l) => l.user)
+      .map((l) => ({ id: l.user.id, nickname: l.user.nickname }));
   }
 }

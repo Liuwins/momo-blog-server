@@ -12,16 +12,20 @@ import { Post } from './post.entity';
 
 @Entity('likes')
 @Unique(['userId', 'postId'])
+@Unique(['visitorId', 'postId'])
 export class Like {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ nullable: true })
   userId: number;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @Column({ type: 'varchar', default: '' })
+  visitorId: string;
 
   @Column()
   postId: number;

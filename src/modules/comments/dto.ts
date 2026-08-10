@@ -11,6 +11,16 @@ export class CreateCommentDto {
   content: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  nickname?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  visitorId?: string;
+
+  @IsOptional()
   @IsInt()
   replyToId?: number;
 
