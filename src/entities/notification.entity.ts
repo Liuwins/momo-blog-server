@@ -26,12 +26,13 @@ export class Notification {
   @JoinColumn({ name: 'receiverId' })
   receiver: User;
 
-  @Column()
+  // 游客行为无 senderId，允许为空
+  @Column({ nullable: true })
   senderId: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'senderId' })
-  sender: User;
+  sender: User | null;
 
   @Column({ type: 'varchar', default: 'like' })
   type: NotificationType;

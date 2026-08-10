@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from '../../entities/like.entity';
 import { PostsService } from '../posts/posts.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 
 @Injectable()
 export class LikesService {
@@ -10,6 +12,7 @@ export class LikesService {
     @InjectRepository(Like)
     private likesRepo: Repository<Like>,
     private postsService: PostsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async toggle(postId: number, userId?: number, visitorId?: string) {
@@ -40,6 +43,19 @@ export class LikesService {
     await this.likesRepo.save(like);
     await this.likesRepo.manager.increment('posts', { id: postId }, 'likeCount', 1);
     const updated = await this.postsService.findById(postId);
+
+    // 通知博主（自己点赞自己不通知）
+    if (post.userId && userId !== post.userId) {
+      this.notificationsService
+        .createAndNotify({
+          receiverId: post.userId,
+          senderId: userId || null,
+          type: NotificationType.LIKE,
+          postId,
+        })
+        .catch(() => {});
+    }
+
     return { liked: true, likeCount: updated?.likeCount || 0 };
   }
 

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Comment, CommentStatus } from '../../entities/comment.entity';
 import { PostsService } from '../posts/posts.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../../entities/notification.entity';
 import { CreateCommentDto } from './dto';
 
 @Injectable()
@@ -11,6 +13,7 @@ export class CommentsService {
     @InjectRepository(Comment)
     private commentsRepo: Repository<Comment>,
     private postsService: PostsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async create(postId: number, dto: CreateCommentDto, userId?: number) {
@@ -33,6 +36,20 @@ export class CommentsService {
 
     const saved = await this.commentsRepo.save(comment);
     await this.postsService.incrementCommentCount(postId);
+
+    // 通知博主（自己评论自己不通知）
+    if (post.userId && userId !== post.userId) {
+      const type = dto.replyToId ? NotificationType.REPLY : NotificationType.COMMENT;
+      this.notificationsService
+        .createAndNotify({
+          receiverId: post.userId,
+          senderId: userId || null,
+          type,
+          postId,
+          content: dto.content,
+        })
+        .catch(() => {});
+    }
 
     return {
       id: saved.id,

@@ -5,6 +5,7 @@ import {
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
+import { Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { NotificationsService } from './notifications.service';
 
@@ -16,7 +17,10 @@ export class NotificationsGateway {
   @WebSocketServer()
   server: Server;
 
-  constructor(private notificationsService: NotificationsService) {}
+  constructor(
+    @Inject(forwardRef(() => NotificationsService))
+    private notificationsService: NotificationsService,
+  ) {}
 
   private userSockets = new Map<number, string>();
 

@@ -4,6 +4,7 @@ import { User } from './entities/user.entity';
 import { Post } from './entities/post.entity';
 import { Comment } from './entities/comment.entity';
 import { Like } from './entities/like.entity';
+import { Notification, NotificationType } from './entities/notification.entity';
 
 async function seed() {
   await AppDataSource.initialize();
@@ -12,6 +13,7 @@ async function seed() {
   const postRepo = AppDataSource.getRepository(Post);
   const commentRepo = AppDataSource.getRepository(Comment);
   const likeRepo = AppDataSource.getRepository(Like);
+  const notificationRepo = AppDataSource.getRepository(Notification);
 
   // Ensure clean start (delete existing data)
   await likeRepo.clear();
@@ -115,6 +117,28 @@ async function seed() {
       }),
     );
     savedPosts.push(post);
+  }
+
+  // Add sample notifications (simulate visitor actions)
+  const notificationsData = [
+    { type: NotificationType.LIKE, postId: savedPosts[0].id, content: '', hoursAgo: 1 },
+    { type: NotificationType.COMMENT, postId: savedPosts[1].id, content: '写得太棒了，很有启发！', hoursAgo: 3 },
+    { type: NotificationType.LIKE, postId: savedPosts[2].id, content: '', hoursAgo: 6 },
+    { type: NotificationType.COMMENT, postId: savedPosts[4].id, content: '这本书我也看过，强烈推荐！', hoursAgo: 12 },
+    { type: NotificationType.REPLY, postId: savedPosts[0].id, content: '感谢分享，已收藏', hoursAgo: 24 },
+  ]
+  for (const n of notificationsData) {
+    await notificationRepo.save(
+      notificationRepo.create({
+        receiverId: user.id,
+        senderId: null,
+        type: n.type,
+        postId: n.postId,
+        content: n.content,
+        isRead: n.hoursAgo > 10,
+        createdAt: new Date(now - n.hoursAgo * 3600 * 1000),
+      }),
+    )
   }
 
   // Add some likes (self-liked a few)
