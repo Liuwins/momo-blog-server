@@ -14,8 +14,8 @@ export class PostsController {
   }
 
   @Get('tags')
-  getTags() {
-    return this.postsService.getAllTags();
+  getTags(@Query('period') period?: string) {
+    return this.postsService.getAllTags(period === 'week' ? 'week' : 'all');
   }
 
   @Get(':id')

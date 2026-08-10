@@ -124,8 +124,14 @@ export class PostsService {
     return true;
   }
 
-  async getAllTags() {
-    const posts = await this.postsRepo.find({ select: ['tags'] });
+  async getAllTags(period?: 'week' | 'all') {
+    const qb = this.postsRepo.createQueryBuilder('post').select(['post.tags']);
+    // 本周热门：仅统计近 7 天的动态
+    if (period === 'week') {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      qb.where('post.createdAt >= :since', { since });
+    }
+    const posts = await qb.getMany();
     const tagCount = new Map<string, number>();
     for (const p of posts) {
       for (const t of (p.tags || [])) {

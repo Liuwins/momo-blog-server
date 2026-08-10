@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Init1786351803294 implements MigrationInterface {
-    name = 'Init1786351803294'
+export class Init1786353535155 implements MigrationInterface {
+    name = 'Init1786353535155'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "comments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "postId" integer NOT NULL, "userId" integer, "nickname" varchar NOT NULL DEFAULT (''), "visitorId" varchar NOT NULL DEFAULT (''), "content" text NOT NULL DEFAULT (''), "status" varchar NOT NULL DEFAULT ('pending'), "replyToId" integer, "replyToNickname" varchar NOT NULL DEFAULT (''), "createdAt" datetime NOT NULL DEFAULT (datetime('now')))`);
@@ -9,6 +9,9 @@ export class Init1786351803294 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "posts" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "userId" integer NOT NULL, "content" text NOT NULL DEFAULT (''), "images" text NOT NULL DEFAULT (''), "videos" text NOT NULL DEFAULT (''), "tags" text NOT NULL DEFAULT (''), "likeCount" integer NOT NULL DEFAULT (0), "commentCount" integer NOT NULL DEFAULT (0), "liked" boolean NOT NULL DEFAULT (0), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')))`);
         await queryRunner.query(`CREATE TABLE "notifications" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "receiverId" integer NOT NULL, "senderId" integer, "type" varchar NOT NULL DEFAULT ('like'), "isRead" boolean NOT NULL DEFAULT (0), "postId" integer, "content" text NOT NULL DEFAULT (''), "createdAt" datetime NOT NULL DEFAULT (datetime('now')))`);
         await queryRunner.query(`CREATE TABLE "users" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "username" varchar(50) NOT NULL, "password" varchar(100) NOT NULL, "nickname" varchar(20) NOT NULL, "avatar" varchar NOT NULL DEFAULT (''), "signature" varchar NOT NULL DEFAULT (''), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "UQ_fe0bb3f6520ee0469504521e710" UNIQUE ("username"))`);
+        await queryRunner.query(`CREATE TABLE "follows" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "followerId" integer NOT NULL, "followingId" integer NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "UQ_follow_pair" UNIQUE ("followerId", "followingId"))`);
+        await queryRunner.query(`CREATE INDEX "IDX_fdb91868b03a2040db408a5333" ON "follows" ("followerId") `);
+        await queryRunner.query(`CREATE INDEX "IDX_ef463dd9a2ce0d673350e36e0f" ON "follows" ("followingId") `);
         await queryRunner.query(`CREATE TABLE "temporary_comments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "postId" integer NOT NULL, "userId" integer, "nickname" varchar NOT NULL DEFAULT (''), "visitorId" varchar NOT NULL DEFAULT (''), "content" text NOT NULL DEFAULT (''), "status" varchar NOT NULL DEFAULT ('pending'), "replyToId" integer, "replyToNickname" varchar NOT NULL DEFAULT (''), "createdAt" datetime NOT NULL DEFAULT (datetime('now')), CONSTRAINT "FK_e44ddaaa6d058cb4092f83ad61f" FOREIGN KEY ("postId") REFERENCES "posts" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_7e8d7c49f218ebb14314fdb3749" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)`);
         await queryRunner.query(`INSERT INTO "temporary_comments"("id", "postId", "userId", "nickname", "visitorId", "content", "status", "replyToId", "replyToNickname", "createdAt") SELECT "id", "postId", "userId", "nickname", "visitorId", "content", "status", "replyToId", "replyToNickname", "createdAt" FROM "comments"`);
         await queryRunner.query(`DROP TABLE "comments"`);
@@ -44,6 +47,9 @@ export class Init1786351803294 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "comments" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "postId" integer NOT NULL, "userId" integer, "nickname" varchar NOT NULL DEFAULT (''), "visitorId" varchar NOT NULL DEFAULT (''), "content" text NOT NULL DEFAULT (''), "status" varchar NOT NULL DEFAULT ('pending'), "replyToId" integer, "replyToNickname" varchar NOT NULL DEFAULT (''), "createdAt" datetime NOT NULL DEFAULT (datetime('now')))`);
         await queryRunner.query(`INSERT INTO "comments"("id", "postId", "userId", "nickname", "visitorId", "content", "status", "replyToId", "replyToNickname", "createdAt") SELECT "id", "postId", "userId", "nickname", "visitorId", "content", "status", "replyToId", "replyToNickname", "createdAt" FROM "temporary_comments"`);
         await queryRunner.query(`DROP TABLE "temporary_comments"`);
+        await queryRunner.query(`DROP INDEX "IDX_ef463dd9a2ce0d673350e36e0f"`);
+        await queryRunner.query(`DROP INDEX "IDX_fdb91868b03a2040db408a5333"`);
+        await queryRunner.query(`DROP TABLE "follows"`);
         await queryRunner.query(`DROP TABLE "users"`);
         await queryRunner.query(`DROP TABLE "notifications"`);
         await queryRunner.query(`DROP TABLE "posts"`);

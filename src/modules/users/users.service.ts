@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../../entities/user.entity';
+import { FollowsService } from '../follows/follows.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    private followsService: FollowsService,
   ) {}
 
   async create(data: { username: string; password: string; nickname: string }) {
@@ -36,7 +38,7 @@ export class UsersService {
     return this.getProfile(id);
   }
 
-  async getProfile(id: number) {
+  async getProfile(id: number, currentUserId?: number) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('用户不存在');
     const result = await this.usersRepo.manager.query(
@@ -44,13 +46,21 @@ export class UsersService {
       [id],
     );
     const postCount = parseInt(result[0].count);
+    const [followerCount, followingCount, isFollowing] = await Promise.all([
+      this.followsService.getFollowerCount(id),
+      this.followsService.getFollowingCount(id),
+      currentUserId
+        ? this.followsService.isFollowing(currentUserId, id)
+        : Promise.resolve(false),
+    ]);
     // 过滤掉敏感字段（password 哈希不应泄露）
     const { password, ...safeUser } = user;
     return {
       ...safeUser,
       postCount,
-      followerCount: 0,
-      followingCount: 0,
+      followerCount,
+      followingCount,
+      isFollowing,
     };
   }
 

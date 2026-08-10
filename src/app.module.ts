@@ -13,6 +13,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { UploadModule } from './modules/upload/upload.module';
 import { OgModule } from './modules/og/og.module';
 import { HealthModule } from './modules/health/health.module';
+import { FollowsModule } from './modules/follows/follows.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { HealthModule } from './modules/health/health.module';
     UploadModule,
     OgModule,
     HealthModule,
+    FollowsModule,
   ],
   providers: [
     // 全局启用限流守卫
