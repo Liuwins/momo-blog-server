@@ -2,7 +2,7 @@ import * as bcrypt from 'bcryptjs';
 import { AppDataSource } from './data-source';
 import { User } from './entities/user.entity';
 import { Post } from './entities/post.entity';
-import { Comment } from './entities/comment.entity';
+import { Comment, CommentStatus } from './entities/comment.entity';
 import { Like } from './entities/like.entity';
 import { Notification, NotificationType } from './entities/notification.entity';
 
@@ -168,6 +168,7 @@ async function seed() {
         userId: user.id,
         nickname: user.nickname,
         content: c.content,
+        status: CommentStatus.APPROVED,
         replyToId: null,
         replyToNickname: '',
       }),

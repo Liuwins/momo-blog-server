@@ -4,6 +4,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 
+// 获取 JWT 密钥：启动时必须配置，否则拒绝启动
+function getJwtSecret(config: ConfigService): string {
+  const secret = config.get<string>('JWT_SECRET');
+  if (!secret || secret.length < 16) {
+    throw new Error('JWT_SECRET 环境变量未设置或长度不足（至少 16 字符）。');
+  }
+  return secret;
+}
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -13,11 +22,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get('JWT_SECRET') || 'momoblog_secret_key',
+      secretOrKey: getJwtSecret(config),
     });
   }
 
-  async validate(payload: { sub: number; phone: string }) {
+  async validate(payload: { sub: number; username: string }) {
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
       throw new UnauthorizedException('用户不存在');

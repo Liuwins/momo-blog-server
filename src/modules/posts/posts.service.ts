@@ -50,6 +50,7 @@ export class PostsService {
           : null,
         content: post.content,
         images: post.images,
+        videos: post.videos,
         tags: post.tags || [],
         createdAt: post.createdAt,
         likeCount: post.likeCount,
@@ -80,6 +81,7 @@ export class PostsService {
         : null,
       content: post.content,
       images: post.images,
+      videos: post.videos,
       tags: post.tags || [],
       createdAt: post.createdAt,
       likeCount: post.likeCount,
@@ -97,6 +99,7 @@ export class PostsService {
       userId,
       content: dto.content,
       images: dto.images || [],
+      videos: dto.videos || [],
       tags: dto.tags || [],
     });
     const saved = await this.postsRepo.save(post);
@@ -108,6 +111,7 @@ export class PostsService {
     if (!post || post.userId !== userId) return null;
     if (dto.content !== undefined) post.content = dto.content;
     if (dto.images !== undefined) post.images = dto.images;
+    if (dto.videos !== undefined) post.videos = dto.videos;
     if (dto.tags !== undefined) post.tags = dto.tags;
     await this.postsRepo.save(post);
     return this.findById(id, userId);
@@ -139,7 +143,27 @@ export class PostsService {
   }
 
   async decrementCommentCount(id: number) {
-    await this.postsRepo.decrement({ id }, 'commentCount', 1);
+    // 下界保护：防止计数变为负数（并发或异常重试时）
+    await this.postsRepo
+      .createQueryBuilder()
+      .update(Post)
+      .set({ commentCount: () => 'MAX(commentCount - 1, 0)' })
+      .where('id = :id', { id })
+      .execute();
+  }
+
+  async incrementLikeCount(id: number) {
+    await this.postsRepo.increment({ id }, 'likeCount', 1);
+  }
+
+  async decrementLikeCount(id: number) {
+    // 下界保护：防止点赞计数变为负数
+    await this.postsRepo
+      .createQueryBuilder()
+      .update(Post)
+      .set({ likeCount: () => 'MAX(likeCount - 1, 0)' })
+      .where('id = :id', { id })
+      .execute();
   }
 
   private async getPreviewComments(postId: number, currentUserId?: number) {

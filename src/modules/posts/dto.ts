@@ -6,10 +6,11 @@ export class NotEmptyPostConstraint implements ValidatorConstraintInterface {
     const obj = args.object as CreatePostDto;
     const content = (obj.content || '').trim();
     const images = obj.images || [];
-    return content.length > 0 || images.length > 0;
+    const videos = obj.videos || [];
+    return content.length > 0 || images.length > 0 || videos.length > 0;
   }
   defaultMessage() {
-    return '文章内容或图片至少填写一个';
+    return '文章内容、图片或视频至少填写一个';
   }
 }
 
@@ -22,6 +23,11 @@ export class CreatePostDto {
   @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9, { message: '视频最多 9 个' })
+  videos?: string[];
 
   @IsOptional()
   @IsArray()
@@ -42,6 +48,11 @@ export class UpdatePostDto {
   @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(9, { message: '视频最多 9 个' })
+  videos?: string[];
 
   @IsOptional()
   @IsArray()

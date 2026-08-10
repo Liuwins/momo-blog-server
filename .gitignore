@@ -16,6 +16,9 @@ backups/
 *.db
 *.sqlite
 
+# 用户上传的图片/视频（运行时生成，不入库）
+images/
+
 # Logs
 logs/
 *.log

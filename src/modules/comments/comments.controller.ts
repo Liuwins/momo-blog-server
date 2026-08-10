@@ -28,29 +28,29 @@ export class CommentsController {
     return this.commentsService.delete(id, req.user.id);
   }
 
-  // 博主审核评论
+  // 博主审核评论（仅文章博主可操作）
   @Post(':id/approve')
   @UseGuards(JwtAuthGuard)
-  approve(@Param('id') id: number) {
-    return this.commentsService.approve(id);
+  approve(@Param('id') id: number, @Request() req) {
+    return this.commentsService.approve(id, req.user.id);
   }
 
   @Post(':id/reject')
   @UseGuards(JwtAuthGuard)
-  reject(@Param('id') id: number) {
-    return this.commentsService.reject(id);
+  reject(@Param('id') id: number, @Request() req) {
+    return this.commentsService.reject(id, req.user.id);
   }
 
-  // 待审核列表
+  // 待审核列表（仅返回当前用户文章下的待审核评论）
   @Get('admin/pending')
   @UseGuards(JwtAuthGuard)
-  getPending(@Query('page') page: number, @Query('pageSize') pageSize: number) {
-    return this.commentsService.getPending(page || 1, pageSize || 20);
+  getPending(@Query('page') page: number, @Query('pageSize') pageSize: number, @Request() req) {
+    return this.commentsService.getPending(req.user.id, page || 1, pageSize || 20);
   }
 
   @Get('admin/pending-count')
   @UseGuards(JwtAuthGuard)
-  getPendingCount() {
-    return this.commentsService.getPendingCount();
+  getPendingCount(@Request() req) {
+    return this.commentsService.getPendingCount(req.user.id);
   }
 }

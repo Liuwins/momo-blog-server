@@ -2,6 +2,20 @@ import { Controller, Get, Param, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { PostsService } from '../posts/posts.service';
 
+/**
+ * HTML 实体转义，防止存储型 XSS
+ * 转义所有可能破坏 HTML 结构的字符
+ */
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 @Controller('og')
 export class OgController {
   constructor(private postsService: PostsService) {}
@@ -14,11 +28,12 @@ export class OgController {
       const data = await this.postsService.findById(id);
       const post = data || null;
 
-      const title = post ? `${post.user?.nickname || '博主'} 的动态` : 'MomoBlog';
-      const desc = post ? (post.content || '').replace(/\s+/g, ' ').slice(0, 100) : '朋友圈式个人博客';
+      // 所有用户内容必须转义后才能拼入 HTML
+      const title = post ? `${escapeHtml(post.user?.nickname || '博主')} 的动态` : 'MomoBlog';
+      const desc = post ? escapeHtml((post.content || '').replace(/\s+/g, ' ').slice(0, 100)) : '朋友圈式个人博客';
       // 取第一张图做分享卡片，没有则用默认封面
       const img = post?.images?.length
-        ? `${site}${post.images[0]}`
+        ? `${site}${escapeHtml(post.images[0])}`
         : `${site}/images/og-cover.webp`;
       const url = `${site}/post/${id}`;
 

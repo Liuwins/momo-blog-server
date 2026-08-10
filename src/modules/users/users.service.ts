@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcryptjs';
 import { User } from '../../entities/user.entity';
 
 @Injectable()
@@ -11,7 +12,12 @@ export class UsersService {
   ) {}
 
   async create(data: { username: string; password: string; nickname: string }) {
-    const user = this.usersRepo.create(data);
+    // 密码必须哈希后存储，防止明文落库
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = this.usersRepo.create({
+      ...data,
+      password: hashedPassword,
+    });
     return this.usersRepo.save(user);
   }
 
@@ -24,8 +30,10 @@ export class UsersService {
   }
 
   async updateProfile(id: number, data: Partial<User>) {
-    await this.usersRepo.update(id, data);
-    return this.findById(id);
+    // 防止通过 updateProfile 修改密码字段
+    const { password, ...safeData } = data;
+    await this.usersRepo.update(id, safeData);
+    return this.getProfile(id);
   }
 
   async getProfile(id: number) {
@@ -36,8 +44,10 @@ export class UsersService {
       [id],
     );
     const postCount = parseInt(result[0].count);
+    // 过滤掉敏感字段（password 哈希不应泄露）
+    const { password, ...safeUser } = user;
     return {
-      ...user,
+      ...safeUser,
       postCount,
       followerCount: 0,
       followingCount: 0,
