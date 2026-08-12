@@ -30,6 +30,12 @@ export class User {
   @Column({ default: '' })
   signature: string;
 
+  @Column({ default: '' })
+  bgImage: string;
+
+  @Column({ default: '' })
+  bgMusic: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

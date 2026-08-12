@@ -66,7 +66,7 @@ export class UsersService {
 
   async getUserPosts(userId: number, page: number, pageSize: number) {
     const rows: any[] = await this.usersRepo.manager.query(
-      `SELECT p.id, p.content, p.images, p.tags, p.likeCount, p.commentCount, p.liked, p.createdAt, p.updatedAt,
+      `SELECT p.id, p.content, p.images, p.videos, p.music, p.tags, p.likeCount, p.commentCount, p.liked, p.createdAt, p.updatedAt,
               u.id as userId, u.nickname, u.avatar
        FROM posts p
        LEFT JOIN users u ON p.userId = u.id
@@ -83,6 +83,7 @@ export class UsersService {
     const list = rows.map((r: any) => ({
       ...r,
       images: r.images ? (typeof r.images === 'string' ? r.images.split(',') : r.images) : [],
+      videos: r.videos ? (typeof r.videos === 'string' ? r.videos.split(',') : r.videos) : [],
       tags: r.tags ? (typeof r.tags === 'string' ? r.tags.split(',') : r.tags) : [],
     }));
     return {

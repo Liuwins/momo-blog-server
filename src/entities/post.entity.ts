@@ -33,6 +33,9 @@ export class Post {
   @Column({ type: 'simple-array', default: '' })
   videos: string[];
 
+  @Column({ default: '' })
+  music: string;
+
   @Column({ type: 'simple-array', default: '' })
   tags: string[];
 

@@ -15,4 +15,14 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(50)
   signature?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  bgImage?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  bgMusic?: string;
 }

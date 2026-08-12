@@ -1,6 +1,7 @@
-import { Controller, Post, UseGuards, UploadedFiles, UploadedFile, UseInterceptors, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, UseGuards, UploadedFiles, UploadedFile, UseInterceptors, HttpException, HttpStatus, Logger, Catch, ExceptionFilter, ArgumentsHost, PayloadTooLargeException, UseFilters } from '@nestjs/common';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { AdminGuard } from '../auth/admin.guard';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -20,10 +21,27 @@ const ALLOWED_VIDEO_MIME: Record<string, string> = {
   'video/webm': '.webm',
 };
 
+// 允许的音频 MIME 类型（覆盖各浏览器上报差异：m4a 常上报为 audio/mp4 或 audio/x-m4a）
+const ALLOWED_AUDIO_MIME: Record<string, string> = {
+  'audio/mpeg': '.mp3',
+  'audio/mp3': '.mp3',
+  'audio/wav': '.wav',
+  'audio/x-wav': '.wav',
+  'audio/wave': '.wav',
+  'audio/ogg': '.ogg',
+  'audio/aac': '.aac',
+  'audio/mp4': '.m4a',
+  'audio/x-m4a': '.m4a',
+  'audio/webm': '.webm',
+  'audio/flac': '.flac',
+  'audio/x-flac': '.flac',
+};
+
 // 文件大小限制
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_TOTAL_SIZE = 30 * 1024 * 1024; // 总计 30MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 单个视频 50MB
+const MAX_AUDIO_SIZE = 20 * 1024 * 1024; // 单个音频 20MB
 
 // 多尺寸配置：缩略图（列表用）、中图（详情页）、原图（点击放大）
 const SIZES = {
@@ -32,9 +50,43 @@ const SIZES = {
   // orig: 原图保存，不缩放
 };
 
+// Multer 超限会抛 PayloadTooLargeException（默认英文 "File too large"），转成明确的中文提示
+@Catch(PayloadTooLargeException)
+export class UploadSizeFilter implements ExceptionFilter {
+  catch(_exception: PayloadTooLargeException, host: ArgumentsHost) {
+    const res = host.switchToHttp().getResponse();
+    res.status(HttpStatus.PAYLOAD_TOO_LARGE).json({
+      statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+      message: '文件超过大小限制（图片单张 5MB / 音频 20MB / 视频 50MB）',
+    });
+  }
+}
+
 @Controller('upload')
-@UseGuards(JwtAuthGuard)
+// 单用户系统：所有上传（图片/视频/音频/封面）仅管理员可用
+@UseGuards(JwtAuthGuard, AdminGuard)
+@UseFilters(UploadSizeFilter)
 export class UploadController {
+  private readonly logger = new Logger(UploadController.name);
+
+  // 确保上传目录存在且可写，失败时抛出带明确原因的异常
+  private ensureUploadDir(): string {
+    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'images');
+    try {
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      fs.accessSync(uploadDir, fs.constants.W_OK);
+    } catch (err) {
+      this.logger.error(`上传目录不可用: ${uploadDir}, 原因: ${err.message}`);
+      throw new HttpException(
+        `服务器存储目录不可写，请联系管理员检查 UPLOAD_DIR 配置`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+    return uploadDir;
+  }
+
   @Post()
   @UseInterceptors(
     FilesInterceptor('files', 9, {
@@ -63,10 +115,7 @@ export class UploadController {
       throw new HttpException('文件总大小超过 30MB 限制', HttpStatus.BAD_REQUEST);
     }
 
-    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'images');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    const uploadDir = this.ensureUploadDir();
 
     const results: { url: string; thumb: string; mid: string }[] = [];
     for (const file of files) {
@@ -165,10 +214,7 @@ export class UploadController {
       throw new HttpException(`不支持的视频类型: ${file.mimetype}`, HttpStatus.BAD_REQUEST);
     }
 
-    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'images');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    const uploadDir = this.ensureUploadDir();
 
     // 随机文件名，存到 images/<hash>/video.<ext>
     const name = crypto.randomBytes(8).toString('hex');
@@ -179,5 +225,59 @@ export class UploadController {
     fs.writeFileSync(path.join(baseDir, filename), file.buffer);
 
     return { url: `/images/${name}/${filename}` };
+  }
+
+  // 音频上传：单文件，限 20MB，仅校验 MIME
+  @Post('audio')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_AUDIO_SIZE },
+      fileFilter: (req, file, cb) => {
+        if (ALLOWED_AUDIO_MIME[file.mimetype]) {
+          cb(null, true);
+        } else {
+          cb(new HttpException(`不支持的音频类型: ${file.mimetype}（支持 mp3/wav/ogg/aac/m4a/flac/webm）`, HttpStatus.BAD_REQUEST), false);
+        }
+      },
+    }),
+  )
+  async uploadAudio(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      this.logger.warn('音频上传失败：请求中没有文件（字段名必须为 file）');
+      throw new HttpException('没有收到音频文件', HttpStatus.BAD_REQUEST);
+    }
+
+    const ext = ALLOWED_AUDIO_MIME[file.mimetype];
+    if (!ext) {
+      this.logger.warn(`音频上传失败：不支持的类型 ${file.mimetype}`);
+      throw new HttpException(`不支持的音频类型: ${file.mimetype}`, HttpStatus.BAD_REQUEST);
+    }
+
+    const uploadDir = this.ensureUploadDir();
+
+    try {
+      const name = crypto.randomBytes(8).toString('hex');
+      const baseDir = path.join(uploadDir, name);
+      fs.mkdirSync(baseDir, { recursive: true });
+
+      // 保留原始文件名（去除扩展名后做安全过滤），让播放器能显示真实歌名
+      const originalBase = path.parse(file.originalname).name || 'audio';
+      const safeName = originalBase
+        .replace(/[/\\:*?"<>|]/g, '_')  // 去除危险字符
+        .replace(/\s+/g, ' ')            // 合并空白
+        .trim()
+        .substring(0, 60) || 'audio';
+      const filename = `${safeName}${ext}`;
+      fs.writeFileSync(path.join(baseDir, filename), file.buffer);
+
+      this.logger.log(`音频上传成功: ${filename}, 大小 ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      return { url: `/images/${name}/${filename}`, name: safeName };
+    } catch (err) {
+      this.logger.error(`音频写入磁盘失败: ${err.message}`, err.stack);
+      throw new HttpException(
+        `音频保存失败: ${err.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

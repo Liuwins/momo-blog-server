@@ -30,6 +30,11 @@ export class CreatePostDto {
   videos?: string[];
 
   @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  music?: string;
+
+  @IsOptional()
   @IsArray()
   @ArrayMaxSize(5, { message: '标签最多 5 个' })
   @ArrayUnique({ message: '标签不能重复' })
@@ -53,6 +58,11 @@ export class UpdatePostDto {
   @IsArray()
   @ArrayMaxSize(9, { message: '视频最多 9 个' })
   videos?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  music?: string;
 
   @IsOptional()
   @IsArray()
